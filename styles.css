@@ -1,0 +1,78 @@
+:root {
+  --bg: #12151c;
+  --panel: #1b1f2a;
+  --panel-2: #232838;
+  --line: #333a4d;
+  --text: #e8ecf4;
+  --dim: #9aa4bb;
+  --ok: #3ecf8e;
+  --warn: #f2c14e;
+  --bad: #f2585b;
+  --accent: #5b8cff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+.app { max-width: 980px; margin: 0 auto; padding: 28px 20px 64px; }
+
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 19px; margin: 26px 0 10px; }
+h3 { font-size: 15px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); }
+p { margin: 0 0 10px; }
+.dim { color: var(--dim); }
+.small { font-size: 13px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 0 0 14px;
+}
+
+.row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #0b1020; font-weight: 600; }
+button.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+
+.choice { display: flex; flex-direction: column; gap: 8px; }
+.choice button { text-align: left; }
+.choice .hint { color: var(--dim); font-size: 13px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--dim); font-weight: 500; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.big { font-size: 42px; font-weight: 700; line-height: 1.1; }
+.bad { color: var(--bad); }
+.warn { color: var(--warn); }
+.ok { color: var(--ok); }
+
+.bar { height: 10px; background: var(--panel-2); border-radius: 6px; overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--accent); }
+.bar.bad > span { background: var(--bad); }
+.bar.ok > span { background: var(--ok); }
+.bar.warn > span { background: var(--warn); }
+
+.hist { display: flex; align-items: flex-end; gap: 2px; height: 120px; margin: 10px 0 4px; }
+.hist > span { flex: 1; background: var(--panel-2); border-top: 2px solid var(--accent); }
+.hist > span.hit { background: #2b3a63; }

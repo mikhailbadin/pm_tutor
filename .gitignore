@@ -1,0 +1,6 @@
+node_modules/
+dist/
+bundle.js
+chrome-profile/
+*.log
+.hermes/

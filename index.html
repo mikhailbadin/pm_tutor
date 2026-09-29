@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Тренажёр планирования релиза</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main id="app" class="app"></main>
+
+  <!-- Режим разработки (по http): ES-модули. По file:// модули не грузятся. -->
+  <script type="module">
+    if (location.protocol.startsWith("http")) {
+      const app = await import("./src/app.js");
+      app.mount(document.getElementById("app"));
+    }
+  </script>
+
+  <!-- Классический скрипт, НЕ type="module": собранная версия работает из file:// -->
+  <script src="bundle.js"></script>
+  <script>
+    if (location.protocol === "file:" && window.PlanningTutor) {
+      window.PlanningTutor.mount(document.getElementById("app"));
+    }
+  </script>
+</body>
+</html>
