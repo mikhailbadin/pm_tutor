@@ -19,11 +19,29 @@ export const SOURCES = [
 
 export const API = ["mount"];
 
+// Вырезает модульный синтаксис. Импорты бывают многострочными, поэтому идём по строкам,
+// а не регуляркой: от строки `import` до строки, которая закрывается `;`.
+function stripModuleSyntax(code) {
+  const out = [];
+  let skipping = false;
+  for (const line of code.split("\n")) {
+    if (!skipping && /^\s*import\b/.test(line)) {
+      if (/;\s*$/.test(line)) continue;
+      skipping = true;
+      continue;
+    }
+    if (skipping) {
+      if (/;\s*$/.test(line)) skipping = false;
+      continue;
+    }
+    out.push(line.replace(/^export\s+(function|const|let|class)\b/, "$1"));
+  }
+  return out.join("\n");
+}
+
 export function bundle(sources) {
   const parts = sources.map((relative) => {
-    let code = readFileSync(join(ROOT, relative), "utf8");
-    code = code.replace(/^\s*import\s[^\n]*\n/gm, "");
-    code = code.replace(/^export\s+(function|const|let|class)/gm, "$1");
+    const code = stripModuleSyntax(readFileSync(join(ROOT, relative), "utf8"));
     return `/* --- ${relative} --- */\n${code.trim()}`;
   });
   const api = API.join(", ");
