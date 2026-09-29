@@ -1,7 +1,13 @@
 // Состояние -> HTML-строка. Никаких побочных эффектов: тестируется без браузера.
 import { SPRINTS, SCENARIO } from "../data/scenario.js";
-import { capacityLosses, DEBT_REFACTOR_COST, BUGS_PER_DEBT_UNIT } from "../engine/model.js";
-import { planSprint, TOTAL_CAPACITY } from "../engine/reducer.js";
+import {
+  capacityAfterLosses,
+  capacityLosses,
+  bugDays,
+  DEBT_REFACTOR_COST,
+  BUGS_PER_DEBT_UNIT,
+} from "../engine/model.js";
+import { planSprint, pendingEvents, TOTAL_CAPACITY } from "../engine/reducer.js";
 
 export function esc(text) {
   return String(text).replace(/[&<>"']/g, (ch) => ({
@@ -77,9 +83,11 @@ export function renderDecisions(state) {
   const plan = planSprint(state);
   const losses = capacityLosses(state);
   const refactorCost = state.debtPlan === "refactor" ? DEBT_REFACTOR_COST : 0;
-  const capacity = Math.max(0, losses.raw - losses.total - refactorCost);
+  // Та же функция, что в движке: ожидаемые дни багов входят в показанную ёмкость.
+  const capacity = capacityAfterLosses(state, { extraDays: refactorCost, bugs: bugDays(state) });
   const overtime = state.overtime;
   const overload = plan.promisedDays - capacity;
+  const pending = pendingEvents(state);
 
   const taskRows = plan.planned
     .map(
@@ -158,7 +166,10 @@ export function renderDecisions(state) {
         <div class="big ${overload > 0 ? "warn" : "ok"}">${overload > 0 ? "+" : ""}${num(overload)} дн</div>
         <div class="small dim">${overload > 0 ? "план превышает ёмкость — часть работы уедет в следующий спринт" : "план помещается в ёмкость"}</div>
       </div>
-      <button class="primary" data-action="run">Провести спринт</button>
+      <div>
+        <button class="primary" data-action="run"${pending.length ? " disabled" : ""}>Провести спринт</button>
+        ${pending.length ? `<div class="small dim">Сначала решите по каждому входящему: ${pending.length} без ответа. Промолчать нельзя — это тоже решение, и оно стоит дней.</div>` : ""}
+      </div>
     </div>
   </div>`;
 }
@@ -210,6 +221,8 @@ function attributionRows(summary) {
     ["Усталость команды", a.burnoutLoss],
     ["Баги из-за долга", a.bugLoss],
     ["Рефакторинг (заплатили, чтобы не терять дальше)", a.refactorCost],
+    ["Разница между планом и фактом", a.estimationGap],
+    ["Списано в бэклог обменом", a.droppedToBacklog],
   ];
   return rows
     .map(([label, value]) => `<tr><td>${label}</td><td class="num">${num(value)}</td></tr>`)
@@ -273,6 +286,8 @@ export function renderReport(state, report) {
     <table>${attributionRows(mine)}
       <tr><td>Обещали работы</td><td class="num">${num(mine.committedPromised)} дн</td></tr>
       <tr><td>Из неё закрыли к дедлайну</td><td class="num">${num(mine.promisedDelivered)} дн</td></tr>
+      <tr><td>Перенесено из плана</td><td class="num">${num(mine.carryoverPromised)} дн</td></tr>
+      <tr><td>Отложено и вынесено в бэклог</td><td class="num">${num(mine.deferredPromised + mine.backlogPromised)} дн</td></tr>
       <tr><td>Осталось в скоупе после дедлайна</td><td class="num">${num(mine.remaining)} дн</td></tr>
       <tr><td>Отказались от внеплановой работы</td><td class="num">${num(mine.attribution.declinedDays)} дн</td></tr>
       <tr><td>Техдолг на руках к релизу</td><td class="num">${mine.debt}</td></tr>

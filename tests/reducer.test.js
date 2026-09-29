@@ -6,6 +6,7 @@ import {
   createInitialState,
   planSprint,
   runSprint,
+  pendingEvents,
   remainingPromised,
   remainingEstimates,
 } from "../src/engine/reducer.js";
@@ -26,6 +27,8 @@ test("initial state is a fresh run of the scenario", () => {
   assert.equal(state.usedDays, 0);
   assert.equal(state.overheadDays, 0);
   assert.deepEqual(state.carryover, []);
+  assert.deepEqual(state.deferred, []);
+  assert.deepEqual(state.backlog, []);
   assert.deepEqual(state.history, []);
 });
 
@@ -49,6 +52,15 @@ test("only taken or swapped events enter the sprint plan, and they come first", 
   assert.equal(plan.taken[0].id, "e1");
   assert.equal(plan.taken[0].priority, 0);
   assert.equal(plan.sprint.id, SPRINTS[0].id);
+});
+
+test("pendingEvents names every event the player has not decided yet", () => {
+  assert.deepEqual(pendingEvents(createInitialState()), ["e1", "e2"]);
+  assert.deepEqual(pendingEvents({ ...createInitialState(), eventChoices: { e1: "take" } }), ["e2"]);
+  assert.deepEqual(
+    pendingEvents({ ...createInitialState(), eventChoices: { e1: "take", e2: "decline" } }),
+    []
+  );
 });
 
 test("a clean weighted sprint fits inside its own capacity", () => {
@@ -108,13 +120,27 @@ test("deferring keeps the work in scope, declining does not", () => {
   assert.ok(remainingPromised(deferred) > 0);
   assert.equal(remainingEstimates(deferred).length, 2);
   assert.equal(deferred.attribution.scopeAdded, 0);
+  assert.equal(deferred.deferred[0].promised, 6); // оценка зафиксирована в момент решения
 });
 
-test("swapping drops the least important planned task to the backlog", () => {
+test("swapping keeps the dropped work in scope instead of erasing it", () => {
   const state = { ...createInitialState(), estimateMode: "pert", eventChoices: { e1: "swap" } };
   const next = runSprint(state);
+
+  // задачу сняли с плана спринта...
   assert.equal(next.history[0].dropped.length, 1);
   assert.equal(next.attribution.droppedToBacklog, 6); // s1-t4 обещана на 6 дней
+
+  // ...но работа не исчезла: она в бэклоге, входит в остаток скоупа и в Монте-Карло
+  assert.equal(next.backlog.length, 1);
+  assert.equal(next.backlog[0].promised, 6);
+  assert.equal(next.backlog[0].source, "swap");
+  assert.equal(remainingPromised(next), 6);
+  assert.equal(remainingEstimates(next).length, 1);
+
+  // и она не считается сделанной: обещанное сходится с доставленным и оставшимся
+  const left = next.carryover.concat(next.backlog).reduce((s, t) => s + t.promised, 0);
+  assert.ok(Math.abs(next.committedPromised - next.promisedDelivered - left) < 1e-9);
 });
 
 test("the same seed reproduces the sprint exactly", () => {

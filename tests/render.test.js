@@ -77,3 +77,30 @@ test("a disciplined run reports a hundred percent on time", () => {
   const html = renderReport(state, { mine: summarise(state, "report"), counter: counterfactual() });
   assert.match(html, />100%</);
 });
+
+test("the run button stays disabled until every incoming event is decided", () => {
+  const pending = renderDecisions(createInitialState());
+  assert.match(pending, /data-action="run" disabled/);
+  assert.match(pending, /Сначала решите по каждому входящему/);
+
+  const decided = renderDecisions({
+    ...createInitialState(),
+    eventChoices: { e1: "take", e2: "decline" },
+  });
+  assert.doesNotMatch(decided, /data-action="run" disabled/);
+});
+
+test("the capacity on the screen is the capacity the sprint will really have", () => {
+  const html = renderDecisions({ ...createInitialState(), debt: 10 });
+  // 40 − 8 (техдолг) − 4 (ожидаемые баги) = 28
+  assert.match(html, /доступной ёмкости 28 дней/);
+});
+
+test("the report lets the player reconcile promised, delivered and left", () => {
+  const state = playStrategy(STRATEGIES.deferred_scope);
+  const html = renderReport(state, { mine: summarise(state, "report"), counter: counterfactual() });
+  assert.match(html, /Перенесено из плана/);
+  assert.match(html, /Отложено и вынесено в бэклог/);
+  assert.match(html, /Списано в бэклог обменом/);
+  assert.match(html, /Разница между планом и фактом/);
+});

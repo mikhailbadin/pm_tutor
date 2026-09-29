@@ -54,3 +54,18 @@ test("strategies are deterministic for the same seed", () => {
   assert.deepEqual(a, b);
   assert.notEqual(a.usedDays, summarise(playStrategy(STRATEGIES.disciplined), "x").usedDays);
 });
+
+test("summarise exposes the parts of the remaining scope", () => {
+  const s = summarise(playStrategy(STRATEGIES.deferred_scope), "parts");
+  assert.equal(s.carryoverPromised, 0);
+  assert.equal(s.deferredPromised, 74);
+  assert.equal(s.backlogPromised, 0);
+  assert.ok(Math.abs(s.remaining - (s.carryoverPromised + s.deferredPromised + s.backlogPromised)) < 1e-9);
+});
+
+test("swapped-out work lands in the backlog instead of disappearing", () => {
+  const s = summarise(playStrategy(STRATEGIES.swap_everything), "swap");
+  assert.ok(s.backlogPromised > 0, "снятая работа должна остаться в скоупе");
+  assert.ok(s.onTime === 0 || s.remaining === 0);
+  assert.ok(s.remaining >= s.backlogPromised);
+});

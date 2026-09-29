@@ -7,6 +7,7 @@ import {
   burnoutPenalty,
   rawCapacity,
   capacityLosses,
+  capacityAfterLosses,
   effectiveCapacity,
   bugDays,
   applyDebt,
@@ -91,4 +92,12 @@ test("burnout grows with overtime and heals by one without it", () => {
   assert.equal(nextBurnout(2, true), 3);
   assert.equal(nextBurnout(2, false), 1);
   assert.equal(nextBurnout(0, false), 0);
+});
+
+test("one capacity function serves both the engine and the screen", () => {
+  const state = { debt: 10, carryoverDays: 10, burnout: 2 };
+  assert.ok(Math.abs(capacityAfterLosses(state) - 23.2) < 1e-9);
+  assert.ok(Math.abs(capacityAfterLosses(state, { extraDays: 5, bugs: 4 }) - 14.2) < 1e-9);
+  assert.equal(capacityAfterLosses(state, { extraDays: 100 }), 0);
+  assert.equal(effectiveCapacity(state), capacityAfterLosses(state));
 });

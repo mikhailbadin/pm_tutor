@@ -2,6 +2,7 @@
 import { SPRINTS, SCENARIO } from "../data/scenario.js";
 import { createRng } from "./rng.js";
 import {
+  capacityAfterLosses,
   capacityLosses,
   rawCapacity,
   bugDays,
@@ -28,7 +29,7 @@ export function createInitialState(seedText = SCENARIO.seed) {
     overtimeRecovery: 0,
     carryover: [],
     deferred: [],
-    declinedDays: 0,
+    backlog: [],
     usedDays: 0,
     overheadDays: 0,
     committedPromised: 0,
@@ -57,6 +58,14 @@ export function estimateFor(likely, mode) {
 // распределения: именно поэтому «план без оценки» систематически занижен.
 export function promisedFor(est, mode) {
   return mode === "blind" ? est.m : pertMean(est.o, est.m, est.p);
+}
+
+// Входящие, по которым игрок ещё не решил. Пока такие есть, спринт не проводится:
+// «промолчал» — это не «отказался», и разница должна быть видна в разборе.
+export function pendingEvents(state) {
+  const sprint = SPRINTS[state.sprintIndex];
+  if (!sprint) return [];
+  return sprint.events.filter((event) => !state.eventChoices[event.id]).map((event) => event.id);
 }
 
 // Что попадает в план спринта и сколько этот план обещает (для игрока).
@@ -95,7 +104,7 @@ export function runSprint(state) {
   const losses = capacityLosses(state);
   const refactorCost = state.debtPlan === "refactor" ? DEBT_REFACTOR_COST : 0;
   const bugs = bugDays(state, rng); // (1) первым делом — шум багов
-  const capacity = Math.max(0, losses.raw - losses.total - refactorCost - bugs);
+  const capacity = capacityAfterLosses(state, { extraDays: refactorCost, bugs });
 
   const { planned, taken } = planSprint(state);
   const queue = [...state.carryover, ...planned, ...taken].sort((a, b) => a.priority - b.priority);
@@ -143,12 +152,33 @@ export function runSprint(state) {
   const deferred = state.deferred.concat(
     sprint.events
       .filter((e) => state.eventChoices[e.id] === "defer")
-      .map((e) => ({ id: e.id, title: e.title, likely: e.likely, sprint: sprint.id }))
+      .map((e) => {
+        const est = estimateFor(e.likely, state.estimateMode);
+        return {
+          id: e.id,
+          title: e.title,
+          est,
+          promised: promisedFor(est, state.estimateMode),
+          sprint: sprint.id,
+          source: "event",
+        };
+      })
   );
   const declinedDays = sprint.events
     .filter((e) => state.eventChoices[e.id] === "decline")
     .reduce((s, e) => s + e.likely, 0);
   const droppedPromised = dropped.reduce((s, t) => s + t.promised, 0);
+  // Снятая обменом работа — это не отказ: она уходит в бэклог и остаётся в скоупе релиза.
+  const backlog = state.backlog.concat(
+    dropped.map((t) => ({
+      id: t.id,
+      title: t.title,
+      est: t.est,
+      promised: t.promised,
+      sprint: sprint.id,
+      source: "swap",
+    }))
+  );
 
   const nextState = {
     ...state,
@@ -167,7 +197,7 @@ export function runSprint(state) {
     })),
     carryoverDays,
     deferred,
-    declinedDays: state.declinedDays + declinedDays,
+    backlog,
     usedDays: state.usedDays + spent,
     overheadDays: state.overheadDays + losses.total + refactorCost + bugs,
     committedPromised:
@@ -215,17 +245,25 @@ export function runSprint(state) {
 }
 
 // Остаток работы после всех спринтов — то, что придётся делать уже ПОСЛЕ дедлайна.
+// Источников три: переносы из плана, отложенные события и работа, снятая обменом.
 export function remainingEstimates(state) {
-  const out = state.carryover.map((t) => t.est);
-  for (const e of state.deferred) out.push(estimateFor(e.likely, state.estimateMode));
-  return out;
+  return state.carryover.concat(state.deferred, state.backlog).map((item) => item.est);
+}
+
+const sumPromised = (items) => items.reduce((s, item) => s + item.promised, 0);
+
+export function carryoverPromised(state) {
+  return sumPromised(state.carryover);
+}
+
+export function deferredPromised(state) {
+  return sumPromised(state.deferred);
+}
+
+export function backlogPromised(state) {
+  return sumPromised(state.backlog);
 }
 
 export function remainingPromised(state) {
-  const carried = state.carryover.reduce((s, t) => s + t.promised, 0);
-  const deferredSum = state.deferred.reduce((s, e) => {
-    const est = estimateFor(e.likely, state.estimateMode);
-    return s + promisedFor(est, state.estimateMode);
-  }, 0);
-  return carried + deferredSum;
+  return carryoverPromised(state) + deferredPromised(state) + backlogPromised(state);
 }

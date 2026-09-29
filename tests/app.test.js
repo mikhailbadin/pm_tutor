@@ -81,3 +81,17 @@ test("taken scope shows up in the report as wasted capacity", () => {
   assert.match(root.innerHTML, /Ушло в никуда/);
   assert.match(root.innerHTML, /0%/);
 });
+
+test("the sprint cannot be run before every incoming event is decided", () => {
+  const root = fakeRoot();
+  mount(root);
+  root.click("start");
+  root.click("run");
+  assert.doesNotMatch(root.innerHTML, /data-action="next"/);
+  assert.match(root.innerHTML, /data-action="run"/);
+
+  root.click("event", { id: "e1", value: "take" });
+  root.click("event", { id: "e2", value: "decline" });
+  root.click("run");
+  assert.match(root.innerHTML, /data-action="next"/);
+});

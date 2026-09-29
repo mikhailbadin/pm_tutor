@@ -1,6 +1,6 @@
 // Единственное место, где есть DOM. Всё остальное — чистые функции.
 import { SPRINTS } from "./data/scenario.js";
-import { createInitialState, runSprint } from "./engine/reducer.js";
+import { createInitialState, runSprint, pendingEvents } from "./engine/reducer.js";
 import { summarise, counterfactual } from "./engine/report.js";
 import { renderApp } from "./ui/render.js";
 
@@ -33,6 +33,7 @@ export function mount(root) {
     } else if (action === "overtime") {
       state = { ...state, overtime: value === "yes" };
     } else if (action === "run") {
+      if (pendingEvents(state).length > 0) return; // «промолчал» — не решение
       lastResult = runSprint(state);
       state = lastResult;
       view = "result";

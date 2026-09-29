@@ -8,6 +8,9 @@ import {
   runSprint,
   remainingEstimates,
   remainingPromised,
+  carryoverPromised,
+  deferredPromised,
+  backlogPromised,
   TOTAL_CAPACITY,
 } from "./reducer.js";
 
@@ -22,6 +25,9 @@ export function summarise(state, tag = "report") {
     overheadDays: state.overheadDays,
     efficiency: consumed === 0 ? 0 : state.usedDays / consumed,
     remaining: remainingPromised(state),
+    carryoverPromised: carryoverPromised(state),
+    deferredPromised: deferredPromised(state),
+    backlogPromised: backlogPromised(state),
     onTime: probabilityWithin(totals, budgetLeft),
     p50: percentile(totals, 50),
     p85: percentile(totals, 85),
@@ -40,6 +46,7 @@ export const STRATEGIES = {
   estimated_but_all_scope: { estimateMode: "pert", events: "take", debt: "refactor", overtime: false },
   disciplined: { estimateMode: "pert", events: "decline", debt: "refactor", overtime: false },
   deferred_scope: { estimateMode: "pert", events: "defer", debt: "refactor", overtime: false },
+  swap_everything: { estimateMode: "pert", events: "swap", debt: "refactor", overtime: false },
   blind_overtime: { estimateMode: "blind", events: "take", debt: "ignore", overtime: true },
 };
 

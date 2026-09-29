@@ -83,6 +83,29 @@ test("monte carlo is deterministic for a seed and sorted", () => {
   assert.ok(first[0] <= first[first.length - 1]);
 });
 
+test("both estimate builders return an ordered triple", () => {
+  for (const build of [tripleEstimate, blindEstimate]) {
+    const est = build(10);
+    assert.ok(
+      est.o <= est.m && est.m <= est.p,
+      `нарушен домен o <= m <= p: ${JSON.stringify(est)}`
+    );
+  }
+});
+
+test("samples never leave the optimistic and pessimistic bounds", () => {
+  const rng = createRng("bounds");
+  for (const est of [tripleEstimate(10), blindEstimate(10)]) {
+    for (let i = 0; i < 500; i += 1) {
+      const value = sampleEstimate(est, rng.next());
+      assert.ok(
+        value >= est.o - 1e-9 && value <= est.p + 1e-9,
+        `сэмпл ${value} вне [${est.o}, ${est.p}]`
+      );
+    }
+  }
+});
+
 test("histogram keeps every run in a bucket", () => {
   const totals = monteCarloTotals([tripleEstimate(5)], createRng("hist"), 500);
   const h = histogram(totals, 10);

@@ -55,9 +55,15 @@ export function capacityLosses(state) {
   return { raw, debtDays, wipDays, burnoutDays, total: debtDays + wipDays + burnoutDays };
 }
 
-export function effectiveCapacity(state) {
+// Единственная точка, где считается доступная ёмкость: движок и экран решений обязаны
+// показывать одно и то же число, иначе тренажёр врёт в самом интерфейсе.
+export function capacityAfterLosses(state, { extraDays = 0, bugs = 0 } = {}) {
   const losses = capacityLosses(state);
-  return Math.max(0, losses.raw - losses.total);
+  return Math.max(0, losses.raw - losses.total - extraDays - bugs);
+}
+
+export function effectiveCapacity(state) {
+  return capacityAfterLosses(state);
 }
 
 export function bugDays(state, rng) {
