@@ -23,6 +23,7 @@ export function createInitialState(seedText = SCENARIO.seed) {
     debtPlan: "ignore", // refactor | ignore
     overtime: false,
     eventChoices: {}, // eventId -> take | swap | defer | decline
+    nudge: 0, // сколько раз игрок нажал «провести спринт», не решив по входящим
     debt: 0,
     burnout: 0,
     carryoverDays: 0,
@@ -133,18 +134,32 @@ export function runSprint(state) {
         actual: remaining,
         event: Boolean(task.event),
       });
+    } else if (done.length === 0 && spent === 0 && remaining > capacity) {
+      // Команду заело: целую задачу за спринт не вытянуть, но часть работы по ней всё равно
+      // делается. Без этой ветки спринт утопающей команды выдавал ровно ноль работы, и
+      // решения игрока переставали на что-либо влиять до самого релиза.
+      spent += capacity;
+      carried.push({ ...task, remaining: remaining - capacity, worked: capacity });
     } else {
       carried.push({ ...task, remaining });
     }
   }
 
+  // Сколько дней реально съела задача: закрытая — факт, частично сделанная — сделанное плюс остаток.
+  const consumedOf = (task) =>
+    task.actual !== undefined
+      ? task.actual
+      : task.worked !== undefined
+        ? task.worked + task.remaining
+        : task.remaining;
+
   const promisedDone = done.reduce((s, t) => s + t.promised, 0);
   const estimationGap = done
     .concat(carried)
-    .reduce((s, t) => s + ((t.actual === undefined ? t.remaining : t.actual) - t.promised), 0);
+    .reduce((s, t) => s + (consumedOf(t) - t.promised), 0);
   let scopeAddedActual = 0;
   for (const t of done.concat(carried)) {
-    if (t.event) scopeAddedActual += t.actual === undefined ? t.remaining : t.actual;
+    if (t.event) scopeAddedActual += consumedOf(t);
   }
 
   const debtAfter = applyDebt(state, state.debtPlan);
@@ -206,6 +221,7 @@ export function runSprint(state) {
     eventChoices: {},
     overtime: false,
     debtPlan: "ignore",
+    nudge: 0,
     attribution: {
       estimationGap: state.attribution.estimationGap + estimationGap,
       scopeAdded: state.attribution.scopeAdded + scopeAddedActual,
@@ -233,7 +249,7 @@ export function runSprint(state) {
         spent,
         doneCount: done.length,
         carriedCount: carried.length,
-        carried: carried.map((t) => ({ title: t.title, remaining: t.remaining })),
+        carried: carried.map((t) => ({ title: t.title, remaining: t.remaining, worked: t.worked })),
         done: done.map((t) => ({ title: t.title, promised: t.promised, actual: t.actual })),
         dropped: dropped.map((t) => t.title),
       },

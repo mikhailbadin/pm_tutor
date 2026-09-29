@@ -78,16 +78,23 @@ test("a disciplined run reports a hundred percent on time", () => {
   assert.match(html, />100%</);
 });
 
-test("the run button stays disabled until every incoming event is decided", () => {
-  const pending = renderDecisions(createInitialState());
-  assert.match(pending, /data-action="run" disabled/);
-  assert.match(pending, /Сначала решите по каждому входящему/);
+test("a blocked sprint names the events that are still undecided", () => {
+  const html = renderDecisions(createInitialState());
+  // кнопка не «мёртвая»: клик по ней даст отклик, поэтому disabled в разметке нет
+  assert.match(html, /data-action="run"/);
+  assert.doesNotMatch(html, /data-action="run" disabled/);
+  assert.match(html, /aria-disabled="true"/);
+  assert.match(html, /Юристы|Клиент просит экспорт в PDF/);
+  assert.match(html, /Сначала решите по каждому входящему/);
+  // нерешённые входящие помечены прямо в списке
+  assert.match(html, /class="panel undecided"/);
 
   const decided = renderDecisions({
     ...createInitialState(),
     eventChoices: { e1: "take", e2: "decline" },
   });
-  assert.doesNotMatch(decided, /data-action="run" disabled/);
+  assert.doesNotMatch(decided, /aria-disabled="true"/);
+  assert.doesNotMatch(decided, /class="panel undecided"/);
 });
 
 test("the capacity on the screen is the capacity the sprint will really have", () => {

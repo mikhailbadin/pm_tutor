@@ -23,6 +23,10 @@ export const MAX_BURNOUT_PENALTY = 0.3;
 export const BUGS_PER_DEBT_UNIT = 0.4;
 export const BUG_SPREAD = 0.5;
 
+// Прожиточный минимум: даже утонувшая в долге команда что-то делает. Без этого пола
+// последние спринты давали ровно ноль работы, и решения игрока перестают влиять на исход.
+export const MIN_CAPACITY_SHARE = 0.15;
+
 export function debtPenalty(debt) {
   return Math.min(MAX_DEBT_PENALTY, Math.max(0, debt) * DEBT_PENALTY_PER_UNIT);
 }
@@ -59,7 +63,9 @@ export function capacityLosses(state) {
 // показывать одно и то же число, иначе тренажёр врёт в самом интерфейсе.
 export function capacityAfterLosses(state, { extraDays = 0, bugs = 0 } = {}) {
   const losses = capacityLosses(state);
-  return Math.max(0, losses.raw - losses.total - extraDays - bugs);
+  let capacity = losses.raw - losses.total - extraDays - bugs;
+  if (capacity < losses.raw * MIN_CAPACITY_SHARE) capacity = losses.raw * MIN_CAPACITY_SHARE;
+  return capacity;
 }
 
 export function effectiveCapacity(state) {

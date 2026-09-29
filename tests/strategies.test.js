@@ -3,12 +3,12 @@ import assert from "node:assert/strict";
 import { playStrategy, summarise, STRATEGIES } from "../src/engine/report.js";
 
 const EXPECTED = {
-  usual: { usedDays: 95.0, consumed: 219.9, overheadDays: 124.9, remaining: 133.7, onTime: 0 },
+  usual: { usedDays: 96.6, consumed: 221.5, overheadDays: 124.9, remaining: 136.5, onTime: 0 },
   estimated_but_all_scope: { usedDays: 147.8, consumed: 219.6, overheadDays: 71.9, remaining: 123.0, onTime: 0 },
   disciplined: { usedDays: 199.2, consumed: 229.2, overheadDays: 30.0, remaining: 0, onTime: 1 },
   deferred_scope: { usedDays: 199.2, consumed: 229.2, overheadDays: 30.0, remaining: 74.0, onTime: 0 },
   swap_everything: { usedDays: 175.3, consumed: 205.3, overheadDays: 30.0, remaining: 98.0, onTime: 0 },
-  blind_overtime: { usedDays: 72.4, consumed: 211.9, overheadDays: 139.5, remaining: 154.0, onTime: 0 },
+  blind_overtime: { usedDays: 87.6, consumed: 227.0, overheadDays: 139.5, remaining: 154.0, onTime: 0 },
 };
 
 const close = (actual, expected, label) =>

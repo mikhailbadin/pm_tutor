@@ -33,7 +33,18 @@ export function mount(root) {
     } else if (action === "overtime") {
       state = { ...state, overtime: value === "yes" };
     } else if (action === "run") {
-      if (pendingEvents(state).length > 0) return; // «промолчал» — не решение
+      if (pendingEvents(state).length > 0) {
+        // Не молчим: объясняем, что спринт не проведён, подсвечиваем нерешённые входящие
+        // и подводим игрока к ним — иначе клик по кнопке выглядит как поломка.
+        state = { ...state, nudge: (state.nudge || 0) + 1 };
+        view = "decisions";
+        draw();
+        const first = root.querySelector && root.querySelector('[data-action="event"]');
+        if (first && typeof first.scrollIntoView === "function") {
+          first.scrollIntoView({ block: "center" });
+        }
+        return;
+      }
       lastResult = runSprint(state);
       state = lastResult;
       view = "result";

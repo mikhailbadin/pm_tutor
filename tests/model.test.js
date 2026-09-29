@@ -13,6 +13,7 @@ import {
   applyDebt,
   nextBurnout,
   DEBT_REFACTOR_COST,
+  MIN_CAPACITY_SHARE,
 } from "../src/engine/model.js";
 import { createRng } from "../src/engine/rng.js";
 
@@ -98,6 +99,13 @@ test("one capacity function serves both the engine and the screen", () => {
   const state = { debt: 10, carryoverDays: 10, burnout: 2 };
   assert.ok(Math.abs(capacityAfterLosses(state) - 23.2) < 1e-9);
   assert.ok(Math.abs(capacityAfterLosses(state, { extraDays: 5, bugs: 4 }) - 14.2) < 1e-9);
-  assert.equal(capacityAfterLosses(state, { extraDays: 100 }), 0);
   assert.equal(effectiveCapacity(state), capacityAfterLosses(state));
+});
+
+test("capacity never falls to zero: a drowning team still produces something", () => {
+  const drowned = { debt: 100, carryoverDays: 400, burnout: 9 };
+  const floor = BASE_CAPACITY * MIN_CAPACITY_SHARE;
+  assert.equal(capacityAfterLosses(drowned, { bugs: 40 }), floor);
+  assert.equal(capacityAfterLosses({ debt: 10 }, { extraDays: 100 }), floor);
+  assert.ok(floor > 0);
 });

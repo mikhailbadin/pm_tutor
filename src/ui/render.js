@@ -88,6 +88,10 @@ export function renderDecisions(state) {
   const overtime = state.overtime;
   const overload = plan.promisedDays - capacity;
   const pending = pendingEvents(state);
+  const pendingTitles = sprint.events
+    .filter((event) => !state.eventChoices[event.id])
+    .map((event) => event.title);
+  const nudged = (state.nudge || 0) > 0 && pending.length > 0;
 
   const taskRows = plan.planned
     .map(
@@ -99,9 +103,10 @@ export function renderDecisions(state) {
   const eventBlocks = sprint.events
     .map((event) => {
       const chosen = state.eventChoices[event.id];
+      const undecided = !chosen;
       return `
-      <div class="panel">
-        <h3>${event.urgent ? "Срочно" : "Не срочно"}</h3>
+      <div class="panel${undecided ? (nudged ? " attention" : " undecided") : ""}">
+        <h3>${event.urgent ? "Срочно" : "Не срочно"}${undecided ? " — решения нет" : ""}</h3>
         <p><strong>${esc(event.title)}</strong> — примерно ${num(event.likely)} дней работы</p>
         <div class="grid">
           ${choice(chosen === "take", "event", "take", "Взять", "внеплановая работа влезает в спринт как есть", event.id)}
@@ -167,8 +172,15 @@ export function renderDecisions(state) {
         <div class="small dim">${overload > 0 ? "план превышает ёмкость — часть работы уедет в следующий спринт" : "план помещается в ёмкость"}</div>
       </div>
       <div>
-        <button class="primary" data-action="run"${pending.length ? " disabled" : ""}>Провести спринт</button>
-        ${pending.length ? `<div class="small dim">Сначала решите по каждому входящему: ${pending.length} без ответа. Промолчать нельзя — это тоже решение, и оно стоит дней.</div>` : ""}
+        <button class="primary" data-action="run" aria-disabled="${pending.length ? "true" : "false"}">Провести спринт</button>
+        ${
+          pending.length
+            ? `<div class="small ${nudged ? "bad" : "dim"}">
+          ${nudged ? "<strong>Спринт не проведён.</strong> " : ""}Сначала решите по каждому входящему:
+          ${pendingTitles.map((title) => `«${esc(title)}»`).join(", ")}.
+          Промолчать нельзя — это тоже решение, и оно стоит дней.</div>`
+            : ""
+        }
       </div>
     </div>
   </div>`;
@@ -181,16 +193,29 @@ export function renderResult(state, lastResult) {
       <td class="num ${task.actual > task.promised ? "bad" : "ok"}">${num(task.actual)}</td></tr>`)
     .join("");
   const carriedRows = record.carried
-    .map((task) => `<tr><td>${esc(task.title)}</td><td class="num">${num(task.remaining)}</td></tr>`)
+    .map(
+      (task) => `<tr><td>${esc(task.title)}</td><td class="num">${num(task.remaining)}${
+        task.worked ? ` <span class="dim small">(частично сделано ${num(task.worked)})</span>` : ""
+      }</td></tr>`
+    )
     .join("");
   const droppedRows = record.dropped.map((title) => `<li>${esc(title)} — ушла в бэклог</li>`).join("");
   const lost = record.debtDays + record.wipDays + record.burnoutDays + record.refactorCost + record.bugs;
+  const floored = record.capacity > Math.max(0, record.raw - lost) + 1e-9;
   const finished = state.sprintIndex >= SPRINTS.length;
   return `
   <h1>Спринт ${record.sprint}: итог</h1>
-  <p class="dim">${esc(record.theme)}. Ёмкость ${num(record.raw)} дней, из них утекло ${num(lost)} дней
+  <p class="dim">${esc(record.theme)}. Ёмкость ${num(record.raw)} дней, потери ${num(lost)} дней
   (техдолг ${num(record.debtDays)}, незавершёнка ${num(record.wipDays)}, усталость ${num(record.burnoutDays)},
-  рефакторинг ${num(record.refactorCost)}, баги ${num(record.bugs)}). Работы поместилось: ${num(record.spent)} дней.</p>
+  рефакторинг ${num(record.refactorCost)}, баги ${num(record.bugs)}). На работу оставалось
+  ${num(record.capacity)} дней, поместилось ${num(record.spent)}.</p>
+  ${
+    floored
+      ? `<p class="small bad">Потери превысили ёмкость: команда работала на прожиточном минимуме —
+  ${num(record.capacity)} дней из ${num(record.raw)}. Так выглядит спринт, в котором техдолг, незавершёнка
+  и усталость съели всё.</p>`
+      : ""
+  }
 
   <div class="panel">
     <h3>Сделано</h3>

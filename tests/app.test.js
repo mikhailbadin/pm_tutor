@@ -82,16 +82,20 @@ test("taken scope shows up in the report as wasted capacity", () => {
   assert.match(root.innerHTML, /0%/);
 });
 
-test("the sprint cannot be run before every incoming event is decided", () => {
+test("a blocked sprint answers the click instead of staying silent", () => {
   const root = fakeRoot();
   mount(root);
   root.click("start");
+  assert.doesNotMatch(root.innerHTML, /Спринт не проведён/);
+
   root.click("run");
-  assert.doesNotMatch(root.innerHTML, /data-action="next"/);
-  assert.match(root.innerHTML, /data-action="run"/);
+  assert.doesNotMatch(root.innerHTML, /data-action="next"/); // спринт не проведён
+  assert.match(root.innerHTML, /Спринт не проведён/); // но игрок получил объяснение
+  assert.match(root.innerHTML, /class="panel attention"/); // и видит, куда смотреть
 
   root.click("event", { id: "e1", value: "take" });
   root.click("event", { id: "e2", value: "decline" });
   root.click("run");
   assert.match(root.innerHTML, /data-action="next"/);
+  assert.doesNotMatch(root.innerHTML, /Спринт не проведён/);
 });

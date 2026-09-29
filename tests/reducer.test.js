@@ -149,3 +149,29 @@ test("the same seed reproduces the sprint exactly", () => {
   assert.deepEqual(a.history, b.history);
   assert.equal(a.usedDays, b.usedDays);
 });
+
+test("a drowning team still works every sprint instead of standing still", () => {
+  let state = createInitialState();
+  const capacities = [];
+  const spent = [];
+  for (let i = 0; i < SPRINTS.length; i += 1) {
+    for (const event of SPRINTS[i].events) state.eventChoices[event.id] = "take";
+    state.debtPlan = "ignore";
+    state.overtime = true;
+    state = runSprint(state);
+    const record = state.history.at(-1);
+    capacities.push(record.capacity);
+    spent.push(record.spent);
+  }
+  assert.ok(
+    capacities.every((c) => c > 0),
+    `ёмкость не должна обнуляться: ${capacities.map((c) => c.toFixed(1)).join(", ")}`
+  );
+  assert.ok(
+    spent.every((s) => s > 0),
+    `в каждом спринте команда должна что-то делать: ${spent.map((s) => s.toFixed(1)).join(", ")}`
+  );
+  // и у перенесённой задачи видно, что часть работы по ней уже сделана
+  const partial = state.history.find((r) => r.carried.some((t) => t.worked > 0));
+  assert.ok(partial, "должен найтись спринт с частично сделанной задачей");
+});
